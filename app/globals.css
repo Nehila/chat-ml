@@ -1,0 +1,151 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  font-family: "Noto Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell,
+    "Open Sans", "Helvetica Neue", sans-serif;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+body {
+  color: #333;
+  background-color: #fff;
+  font-family: "Noto Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell,
+    "Open Sans", "Helvetica Neue", sans-serif;
+}
+
+.dark body {
+  color: #e5e5e5;
+  background-color: #1e1e1e;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #4b5563;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+/* Animation keyframes */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes growUp {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--target-height);
+  }
+}
+
+@keyframes drawLine {
+  from {
+    stroke-dashoffset: 100;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes fillCircle {
+  from {
+    stroke-dashoffset: 251;
+  }
+  to {
+    stroke-dashoffset: var(--target-offset);
+  }
+}
+
+@keyframes countUp {
+  from {
+    content: "0";
+  }
+  to {
+    content: attr(data-target);
+  }
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.5);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s infinite;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.5s ease-out forwards;
+}
+
+.animate-grow-up {
+  animation: growUp 1s ease-out forwards;
+}
+
+.animate-draw-line {
+  animation: drawLine 1.5s ease-out forwards;
+}
+
+.animate-fill-circle {
+  animation: fillCircle 1.5s ease-out forwards;
+}
+
+.animate-count-up {
+  animation: countUp 1.5s ease-out forwards;
+}
