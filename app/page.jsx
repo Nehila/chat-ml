@@ -1,203 +1,154 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { SendHorizontal } from "lucide-react"
 import { ChatMessage } from "@/components/chat-message"
 import { StatisticsPanel } from "@/components/statistics-panel"
+import { NamePopup } from "@/components/name-popup"
+import { AppServices } from "@/services/AppServices"
+import { useModel } from "@/lib/model-context"
+import { useUsername } from "@/lib/username-context"
+
+
+const sentimentFromResult = (r) => r.toLowerCase()
 
 export default function Home() {
-  const [messages, setMessages] = useState([
-    {
-      sender: "user",
-      message: "The product arrived faster than expected, and it works perfectly!",
-    },
-    {
-      sender: "system",
-      thinking: "3",
-      message: "Positive",
-      sentiment: "positive",
-    },
-    {
-      sender: "user",
-      message: "The instructions were unclear, but the customer service helped resolve my issue.",
-    },
-    {
-      sender: "system",
-      thinking: "4",
-      message: "Neutral",
-      sentiment: "neutral",
-    },
-    {
-      sender: "user",
-      message: "This was a complete waste of money. Broke after one use!",
-    },
-    {
-      sender: "system",
-      thinking: "2",
-      message: "Negative",
-      sentiment: "negative",
-    },
-    {
-      sender: "user",
-      message: "I expected a better quality for the price, but it's acceptable.",
-    },
-    {
-      sender: "system",
-      thinking: "3",
-      message: "Neutral",
-      sentiment: "neutral",
-    },
-    {
-      sender: "user",
-      message: "Absolutely fantastic! Exceeded my expectations in every way.",
-    },
-    {
-      sender: "system",
-      thinking: "2",
-      message: "Positive",
-      sentiment: "positive",
-    },
-  ])
+    const { setUsername } = useUsername()
+    const { model } = useModel()
+    const storageKey = `chat_history_${model}`
 
-  // Calculate statistics
-  const [stats, setStats] = useState({
-    total: 0,
-    positive: 0,
-    neutral: 0,
-    negative: 0,
-  })
+    const [messages, setMessages] = useState([])
+    useEffect(() => {
+        if (typeof window === "undefined") return
+        try {
+            const stored = localStorage.getItem(storageKey)
+            setMessages(stored ? JSON.parse(stored) : [])
+        } catch { setMessages([]) }
+    }, [storageKey])
 
-  // Update stats when messages change
-  useEffect(() => {
-    const systemMessages = messages.filter((m) => m.sender === "system")
-    setStats({
-      total: systemMessages.length,
-      positive: systemMessages.filter((m) => m.sentiment === "positive").length,
-      neutral: systemMessages.filter((m) => m.sentiment === "neutral").length,
-      negative: systemMessages.filter((m) => m.sentiment === "negative").length,
-    })
-  }, [messages])
+    const [stats, setStats] = useState({ total: 0, positive: 0, neutral: 0, negative: 0 })
+    useEffect(() => {
+        const sys = messages.filter((m) => m.sender === "system")
+        setStats({
+            total: sys.length,
+            positive: sys.filter((m) => m.sentiment === "positive").length,
+            neutral: sys.filter((m) => m.sentiment === "neutral").length,
+            negative: sys.filter((m) => m.sentiment === "negative").length,
+        })
 
-  // Uncomment the line below to start with an empty conversation
-  // const [messages, setMessages] = useState([])
+        if (typeof window !== "undefined")
+            localStorage.setItem(storageKey, JSON.stringify(messages))
+    }, [messages, storageKey])
 
-  const [inputValue, setInputValue] = useState("")
-  const [isTyping, setIsTyping] = useState(false)
+    const [inputValue, setInputValue] = useState("")
+    const [isTyping, setIsTyping] = useState(false)
 
-  const handleSendMessage = () => {
-    if (inputValue.trim()) {
-      setMessages([...messages, { sender: "user", message: inputValue }])
-      setInputValue("")
-      setIsTyping(true)
+    const handleSendMessage = useCallback(async () => {
+        const text = inputValue.trim()
+        if (!text || isTyping) return
 
-      // Simulate AI response after a short delay
-      setTimeout(() => {
-        // Randomly determine sentiment
-        const sentiments = ["positive", "neutral", "negative"]
-        const randomSentiment = sentiments[Math.floor(Math.random() * sentiments.length)]
+        setMessages((prev) => [...prev, { sender: "user", message: text }])
+        setInputValue("")
+        setIsTyping(true)
 
-        setIsTyping(false)
-        setMessages((prev) => [
-          ...prev,
-          {
-            sender: "system",
-            thinking: Math.floor(Math.random() * 5) + 1,
-            message: randomSentiment.charAt(0).toUpperCase() + randomSentiment.slice(1),
-            sentiment: randomSentiment,
-          },
-        ])
-      }, 1500)
+        try {
+            const t0 = performance.now()
+            const data = await AppServices.post({ model, text }, "/predict")
+            const t1 = performance.now()
+            const duration = Math.round(t1 - t0)
+            setMessages((prev) => [
+                ...prev,
+                {
+                    sender: "system",
+                    thinking: duration,
+                    message: data.result,
+                    sentiment: sentimentFromResult(data.result),
+                    score: data.score,
+                },
+            ])
+        } catch (err) {
+            console.error(err)
+            setMessages((prev) => [
+                ...prev,
+                { sender: "system", message: "⚠️ backend error", sentiment: "neutral" },
+            ])
+        } finally {
+            setIsTyping(false)
+        }
+    }, [inputValue, isTyping, model])
+
+    const handleKeyDown = (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault()
+            handleSendMessage()
+        }
     }
-  }
 
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault()
-      handleSendMessage()
+    const handleNameSaved = (name) => {
+        setUsername(name)
     }
-  }
 
-  return (
-    <div className="flex h-full">
-      {/* Left side - Chat */}
-      <div className="w-1/4 flex flex-col bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800">
-        {messages.length === 0 ? (
-          <div className="flex-1 flex items-center justify-center p-4">
-            <div className="max-w-2xl text-center">
-              <h1 className="text-2xl font-medium mb-6 text-gray-900 dark:text-white">
-                Qu'est-ce qui vous intéresse aujourd'hui ?
-              </h1>
-            </div>
-          </div>
-        ) : (
-          <div className="flex-1 overflow-auto py-8 px-4">
-            <div className="max-w-3xl mx-auto">
-              {messages.map((msg, index) => (
-                <ChatMessage key={index} message={msg} />
-              ))}
+    return (
+        <>
+            <NamePopup onNameSaved={handleNameSaved} />
+            <div className="flex h-full">
+                <div className="w-1/4 flex flex-col bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800">
+                    <div className="flex-1 overflow-auto py-8 px-4">
+                        <div className="max-w-3xl mx-auto">
+                            {messages.map((msg, idx) => (
+                                <ChatMessage key={idx} message={msg} />
+                            ))}
 
-              {isTyping && (
-                <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400 mt-4">
-                  <div
-                    className="w-2 h-2 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce"
-                    style={{ animationDelay: "0ms" }}
-                  ></div>
-                  <div
-                    className="w-2 h-2 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce"
-                    style={{ animationDelay: "150ms" }}
-                  ></div>
-                  <div
-                    className="w-2 h-2 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce"
-                    style={{ animationDelay: "300ms" }}
-                  ></div>
+                            {isTyping && (
+                                <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400 mt-4">
+                                    {[0, 150, 300].map((d) => (
+                                        <div
+                                            key={d}
+                                            className="w-2 h-2 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce"
+                                            style={{ animationDelay: `${d}ms` }}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="p-4 md:p-6 pb-8">
+                        <div className="mx-auto max-w-3xl">
+                            <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 shadow-sm rounded-2xl">
+                                <CardContent className="p-2 pt-3">
+                                    <Textarea
+                                        placeholder="Type a message"
+                                        className="min-h-0 outline-none resize-none border-0 bg-transparent p-2"
+                                        rows={1}
+                                        value={inputValue}
+                                        onChange={(e) => setInputValue(e.target.value)}
+                                        onKeyDown={handleKeyDown}
+                                        disabled={isTyping}
+                                    />
+                                </CardContent>
+                                <CardFooter className="flex justify-end p-2 pt-0">
+                                    <Button
+                                        size="icon"
+                                        onClick={handleSendMessage}
+                                        disabled={isTyping || !inputValue.trim()}
+                                        className="rounded-full h-8 w-8"
+                                    >
+                                        <SendHorizontal className="h-5 w-5" />
+                                    </Button>
+                                </CardFooter>
+                            </Card>
+                        </div>
+                    </div>
                 </div>
-              )}
-            </div>
-          </div>
-        )}
 
-        <div className="p-4 md:p-6 pb-8">
-          <div className="mx-auto max-w-3xl">
-            <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 shadow-sm rounded-2xl">
-              <CardContent className="p-2 pt-3">
-                <Textarea
-                  placeholder="Poser une question"
-                  className="min-h-0 outline-none resize-none border-0 bg-transparent p-2 text-gray-900 dark:text-white focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-gray-500 dark:placeholder:text-gray-400"
-                  rows={1}
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  disabled={isTyping}
-                />
-              </CardContent>
-
-              <CardFooter className="flex justify-between p-2 pt-0">
-                <div></div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="icon"
-                    className="rounded-full h-8 w-8 flex justify-center items-center bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200"
-                    onClick={handleSendMessage}
-                    disabled={isTyping || !inputValue.trim()}
-                  >
-                    <SendHorizontal className="h-5 w-5" />
-                    <span className="sr-only">Send message</span>
-                  </Button>
+                <div className="w-3/4 bg-gray-50 dark:bg-gray-900 overflow-auto">
+                    <StatisticsPanel stats={stats} />
                 </div>
-              </CardFooter>
-            </Card>
-
-          </div>
-        </div>
-      </div>
-
-      {/* Right side - Statistics */}
-      <div className="w-3/4 bg-gray-50 dark:bg-gray-900 overflow-auto">
-        <StatisticsPanel stats={stats} />
-      </div>
-    </div>
-  )
+            </div>
+        </>
+    )
 }

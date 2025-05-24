@@ -2,6 +2,8 @@ import { Noto_Sans } from "next/font/google"
 import "./globals.css"
 import { Header } from "@/components/header"
 import { ThemeProvider } from "@/components/theme-provider"
+import { ModelProvider } from "@/lib/model-context"
+import { UsernameProvider } from "@/lib/username-context"
 
 const notoSans = Noto_Sans({
   subsets: ["latin"],
@@ -20,10 +22,14 @@ export default function RootLayout({ children }) {
     <html lang="en" suppressHydrationWarning>
       <body className={notoSans.className}>
         <ThemeProvider>
-          <div className="flex h-screen flex-col bg-white dark:bg-gray-900">
-            <Header />
-            <main className="flex-1 overflow-hidden">{children}</main>
-          </div>
+          <ModelProvider>
+            <UsernameProvider>
+              <div className="flex h-screen flex-col bg-white dark:bg-gray-900">
+                <Header />
+                <main className="flex-1 overflow-hidden">{children}</main>
+              </div>
+            </UsernameProvider>
+          </ModelProvider>
         </ThemeProvider>
       </body>
     </html>

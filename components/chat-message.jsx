@@ -32,7 +32,7 @@ export function ChatMessage({ message }) {
           {message.thinking && (
             <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mb-2">
               <span className="flex items-center">
-                Thought for {message.thinking} seconds
+                Thought for {message.thinking} ms &nbsp; - &nbsp;<span className="font-bold">{parseFloat(message.score * 100).toFixed(2)}%</span>
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   width="16"
